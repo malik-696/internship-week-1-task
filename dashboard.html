@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Performance Dashboard</title>
+    <link rel="stylesheet" href="style2.css">
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+
+        <div class="logo">
+            Student Portal
+        </div>
+
+        <div class="menu-btn" id="menuBtn">
+            ☰
+        </div>
+
+        <ul class="nav-links" id="navLinks">
+            <li><a href="#">Home</a></li>
+            <li><a href="#">Dashboard</a></li>
+            <li><a href="#">Reports</a></li>
+            <li><a href="#">Contact</a></li>
+            <li><a href="index.html" id="logoutBtn">Logout</a></li>
+        </ul>
+
+    </nav>
+
+    <!-- Dashboard -->
+    <section class="dashboard">
+
+        <h2>Welcome to Student Performance Dashboard</h2>
+
+        <!-- Dynamic Cards -->
+        <div class="cards" id="cardsContainer">
+
+        </div>
+
+        <!-- Search + Filter -->
+        <div class="controls">
+
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="Search by Name or Roll No..."
+            >
+
+            <select id="statusFilter">
+
+                <option value="All">All Students</option>
+                <option value="Pass">Pass</option>
+                <option value="Fail">Fail</option>
+
+            </select>
+
+        </div>
+
+        <!-- Student Table -->
+        <div class="table-container">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>Name</th>
+                        <th>Roll No</th>
+                        <th>Class</th>
+                        <th>Marks</th>
+                        <th>Status</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="studentTable">
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+    <footer>
+
+        © 2026 Student Performance Analytics Portal
+
+    </footer>
+
+    <script src="script2.js"></script>
+
+</body>
+</html>
