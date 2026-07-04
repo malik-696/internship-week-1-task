@@ -3,80 +3,475 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Student Performance Analytics Portal</title>
-
-<link rel="stylesheet" href="css/style.css">
+<title>SPAP — Student Performance Analytics Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@500;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<nav class="navbar">
-    <div class="logo">Student Portal</div>
+<!-- ============================== NAV ============================== -->
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a href="#/home" class="brand"><span class="brand-mark">SP</span> SPAP</a>
 
-    <ul class="nav-links" id="navLinks">
-        <li><a href="index.html">Home</a></li>
-        <li><a href="about.html">About</a></li>
-        <li><a href="dashboard.html">Dashboard</a></li>
-        <li><a href="reports.html">Reports</a></li>
-        <li><a href="contact.html">Contact</a></li>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="#/home" data-route="home">Home</a></li>
+      <li><a href="#/about" data-route="about">About</a></li>
+      <li><a href="#/dashboard" data-route="dashboard">Dashboard</a></li>
+      <li><a href="#/report" data-route="report">Reports</a></li>
+      <li><a href="#/contact" data-route="contact">Contact</a></li>
     </ul>
 
-    <div class="menu-toggle" onclick="toggleMenu()">
-        ☰
+    <div class="nav-actions">
+      <div class="nav-user" id="nav-user" style="display:none;">
+        <div class="nav-avatar" id="nav-avatar-initials">DU</div>
+        <span style="font-weight:600; font-size:.9rem;">Hi, <span id="nav-user-name">Student</span></span>
+        <button class="btn btn-outline btn-sm" id="logout-btn">Log out</button>
+      </div>
+      <div id="nav-guest" style="display:flex; gap:8px;">
+        <a href="#/login" class="btn btn-outline btn-sm">Log in</a>
+        <a href="#/register" class="btn btn-dark btn-sm">Sign up</a>
+      </div>
+      <button class="hamburger" id="hamburger-btn" aria-label="Toggle menu"><span></span><span></span><span></span></button>
     </div>
+  </div>
 </nav>
 
-<section class="hero">
-    <h1>Student Performance Analytics Portal</h1>
-    <p>Monitor student performance, attendance, and academic growth.</p>
-    <a href="login.html" class="btn">Get Started</a>
+<main>
+
+<!-- ============================== HOME ============================== -->
+<section class="view" id="view-home">
+  <div class="hero">
+    <div class="container hero-inner">
+      <div>
+        <span class="eyebrow">● Live performance tracking</span>
+        <h1>Every grade tells a story.<br>Read it before it's a headline.</h1>
+        <p class="lead">SPAP turns scattered gradebooks, attendance sheets, and test scores into one ledger your teachers, students, and parents can actually read — updated as fast as the classroom moves.</p>
+        <div class="hero-cta">
+          <a href="#/register" class="btn btn-primary">Create free account</a>
+          <a href="#/dashboard" class="btn btn-outline light">View sample dashboard</a>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat"><b>12,400+</b><span>Students tracked</span></div>
+          <div class="hero-stat"><b>340</b><span>Partner schools</span></div>
+          <div class="hero-stat"><b>4.8/5</b><span>Educator rating</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="stamp"><b>A+</b><span>Report Verified</span></div>
+      </div>
+    </div>
+  </div>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">What's inside</span>
+        <h2>One portal, three ways to see progress</h2>
+        <p style="color:#4B5C55;">Built for the three people who care most about a grade: the student earning it, the teacher recording it, and the parent watching from home.</p>
+      </div>
+      <div class="grid grid-3">
+        <div class="card">
+          <div class="icon-badge">01</div>
+          <h3>Live dashboards</h3>
+          <p>GPA, attendance, and subject scores update the moment a grade is entered — no more waiting for the term-end printout.</p>
+        </div>
+        <div class="card">
+          <div class="icon-badge">02</div>
+          <h3>Searchable reports</h3>
+          <p>Filter a whole class by grade band, sort by attendance, or search for one student by name in a couple of keystrokes.</p>
+        </div>
+        <div class="card">
+          <div class="icon-badge">03</div>
+          <h3>Individual transcripts</h3>
+          <p>Every learner gets a stamped profile page: subject-by-subject breakdown, attendance ring, and a six-week trend line.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="grid grid-4">
+        <div class="card"><div class="icon-badge">Σ</div><h3>Auto-computed GPA</h3><p>Scores convert to a 4.0 scale instantly, no spreadsheet formulas required.</p></div>
+        <div class="card"><div class="icon-badge">%</div><h3>Attendance rings</h3><p>A single glance shows who's trending toward chronic absence.</p></div>
+        <div class="card"><div class="icon-badge">↑</div><h3>Trend lines</h3><p>Six-week sparklines flag improvement or decline before report-card day.</p></div>
+        <div class="card"><div class="icon-badge">🔍</div><h3>Advanced search</h3><p>Combine class, grade band, and keyword filters in the report view.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container text-center">
+      <h2>Ready to see your own ledger?</h2>
+      <p style="color:#4B5C55; max-width:50ch; margin:0 auto 22px;">Sign up in under a minute — this is a front-end simulation, so no real student data ever leaves your browser.</p>
+      <a href="#/register" class="btn btn-dark">Get started free</a>
+    </div>
+  </section>
 </section>
 
-<section class="stats">
-    <div class="card">
-        <h2>500+</h2>
-        <p>Total Students</p>
+<!-- ============================== ABOUT ============================== -->
+<section class="view" id="view-about">
+  <div class="about-hero">
+    <div class="container">
+      <span class="eyebrow">About SPAP</span>
+      <h1 style="max-width:20ch;">Built by people who were tired of report cards arriving too late to matter</h1>
+      <p style="color:var(--chalk-dim); max-width:56ch;">SPAP started as a classroom spreadsheet that grew up. Today it's a lightweight analytics layer schools use to turn raw scores into a running conversation about student growth.</p>
     </div>
+  </div>
 
-    <div class="card">
-        <h2>92%</h2>
-        <p>Attendance Rate</p>
+  <section class="section">
+    <div class="container grid grid-2">
+      <div>
+        <span class="badge-eyebrow">Our approach</span>
+        <h2>Three principles guide every feature</h2>
+        <div class="value-row"><span class="num">01</span><div><h3 style="margin-bottom:4px;">Show, don't archive</h3><p style="margin:0;color:#4B5C55;">Data that only lives in a filing cabinet can't help anyone. Every score surfaces somewhere a teacher or student will actually look.</p></div></div>
+        <div class="value-row"><span class="num">02</span><div><h3 style="margin-bottom:4px;">Context over raw numbers</h3><p style="margin:0;color:#4B5C55;">An 82% means little alone. Trend lines and class rank give every score a story.</p></div></div>
+        <div class="value-row"><span class="num">03</span><div><h3 style="margin-bottom:4px;">Private by default</h3><p style="margin:0;color:#4B5C55;">This prototype keeps everything in your own browser's local storage — nothing is sent anywhere.</p></div></div>
+      </div>
+      <div>
+        <span class="badge-eyebrow">How the ledger came together</span>
+        <h2>Project timeline</h2>
+        <ul class="timeline">
+          <li><strong>Week 1 — Structure.</strong> Static layouts for home, about, dashboard, reports, and contact.</li>
+          <li><strong>Week 2 — Interaction.</strong> Working login form, validated inputs, dynamic cards, searchable tables.</li>
+          <li><strong>Week 3 — Depth.</strong> Registration, password recovery, per-student profiles, sorting, and animation polish.</li>
+        </ul>
+      </div>
     </div>
+  </section>
 
-    <div class="card">
-        <h2>88%</h2>
-        <p>Average Score</p>
+  <section class="section section-alt">
+    <div class="container grid grid-3">
+      <div class="card"><div class="icon-badge">🎓</div><h3>For students</h3><p>See exactly where a grade stands and which subject needs the next study session.</p></div>
+      <div class="card"><div class="icon-badge">🧑‍🏫</div><h3>For teachers</h3><p>Spot the whole class's trend at a glance instead of scrolling a spreadsheet.</p></div>
+      <div class="card"><div class="icon-badge">👪</div><h3>For families</h3><p>A shared, always-current view replaces the once-a-term phone call home.</p></div>
     </div>
-
-    <div class="card">
-        <h2>25</h2>
-        <p>Top Performers</p>
-    </div>
+  </section>
 </section>
 
-<section class="features">
-
-    <div class="feature-box">
-        <h3>Performance Tracking</h3>
-        <p>Track student marks and grades.</p>
+<!-- ============================== DASHBOARD ============================== -->
+<section class="view" id="view-dashboard">
+  <div class="container">
+    <div class="page-header">
+      <div>
+        <span class="badge-eyebrow">Student dashboard</span>
+        <h1>Welcome back, <span id="dash-welcome-name">Student</span></h1>
+        <p class="sub">Here's how this term is tracking so far.</p>
+      </div>
+      <div class="grade-stamp" id="dash-grade-stamp">A</div>
     </div>
 
-    <div class="feature-box">
-        <h3>Analytics Dashboard</h3>
-        <p>Visual insights and statistics.</p>
+    <div class="grid grid-4" id="dash-stat-grid"></div>
+
+    <div class="dash-grid">
+      <div class="card">
+        <h3 style="margin-bottom:16px;">Subject breakdown</h3>
+        <div id="dash-subject-list"></div>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:16px;">Recent activity</h3>
+        <table class="data-table" style="min-width:auto;">
+          <tbody id="dash-activity-body"></tbody>
+        </table>
+      </div>
     </div>
 
-    <div class="feature-box">
-        <h3>Report Generation</h3>
-        <p>Generate detailed performance reports.</p>
+    <div style="margin:26px 0 60px; text-align:right;">
+      <a href="#/report" class="btn btn-outline">View full class report →</a>
     </div>
-
+  </div>
 </section>
 
-<footer>
-    <p>© 2026 Student Performance Analytics Portal</p>
+<!-- ============================== REPORT ============================== -->
+<section class="view" id="view-report">
+  <div class="container">
+    <div class="page-header">
+      <div>
+        <span class="badge-eyebrow">Performance report</span>
+        <h1>Class ledger</h1>
+        <p class="sub" id="report-count">Loading students…</p>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-box">
+        <input type="text" id="report-search" placeholder="Search by student name or class…" aria-label="Search students">
+      </div>
+      <select id="report-class-filter" class="filter-select" aria-label="Filter by class">
+        <option value="all">All classes</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data-table" id="report-table">
+        <thead>
+          <tr>
+            <th data-key="rank">Rank <span class="arrow">↕</span></th>
+            <th data-key="name">Student <span class="arrow">↕</span></th>
+            <th data-key="className">Class <span class="arrow">↕</span></th>
+            <th data-key="gpa">GPA <span class="arrow">↕</span></th>
+            <th data-key="avg">Average <span class="arrow">↕</span></th>
+            <th data-key="attendance">Attendance <span class="arrow">↕</span></th>
+          </tr>
+        </thead>
+        <tbody id="report-table-body"></tbody>
+      </table>
+      <div class="empty-state" id="report-empty" style="display:none;">
+        <h3>No students match your search</h3>
+        <p>Try a different name, or clear the class filter.</p>
+      </div>
+    </div>
+    <p style="color:#7A8B83; font-size:.85rem; margin:14px 0 60px;">Tip: click any row to open that student's full profile. Click a column header to sort.</p>
+  </div>
+</section>
+
+<!-- ============================== PROFILE ============================== -->
+<section class="view" id="view-profile">
+  <div class="container">
+    <button class="btn btn-outline btn-sm" id="profile-back-btn" style="margin-top:24px;">← Back to report</button>
+
+    <div class="profile-header">
+      <div class="profile-avatar" id="profile-avatar-initials">AK</div>
+      <div class="profile-meta">
+        <h2 id="profile-name">Student Name</h2>
+        <p class="sub" id="profile-meta-sub">Class · ID</p>
+      </div>
+      <span class="pill pill-good mono" id="profile-gpa-badge" style="font-size:.9rem; padding:8px 16px;">GPA 0.00</span>
+      <div class="grade-stamp" id="profile-grade-stamp" style="background:rgba(255,255,255,0.08); color:var(--chalk-yellow);">A</div>
+    </div>
+
+    <div class="dash-grid">
+      <div class="card">
+        <h3 style="margin-bottom:16px;">Subject performance</h3>
+        <div id="profile-subject-list"></div>
+      </div>
+      <div class="card" style="display:flex; flex-direction:column; gap:26px;">
+        <div>
+          <h3 style="margin-bottom:10px;">Attendance</h3>
+          <div class="ring-wrap">
+            <svg width="140" height="140" viewBox="0 0 140 140">
+              <circle cx="70" cy="70" r="52" fill="none" stroke="var(--paper-line)" stroke-width="12"/>
+              <circle id="profile-ring-fg" cx="70" cy="70" r="52" fill="none" stroke="var(--grade-good)" stroke-width="12" stroke-linecap="round"/>
+            </svg>
+            <div class="ring-value" id="profile-ring-value">0%</div>
+            <div class="ring-label">present this term</div>
+          </div>
+        </div>
+        <div>
+          <h3 style="margin-bottom:10px;">6-week trend</h3>
+          <svg width="100%" viewBox="0 0 240 60" preserveAspectRatio="xMidYMid meet" id="profile-sparkline"></svg>
+        </div>
+      </div>
+    </div>
+    <div style="height:60px;"></div>
+  </div>
+</section>
+
+<!-- ============================== CONTACT ============================== -->
+<section class="view" id="view-contact">
+  <div class="container section">
+    <div class="section-head">
+      <span class="eyebrow">Get in touch</span>
+      <h1>Questions about your ledger?</h1>
+      <p style="color:#4B5C55;">Whether you're a teacher onboarding a class or a parent with a question about a grade, send a note and we'll route it to the right desk.</p>
+    </div>
+
+    <div class="contact-grid">
+      <div>
+        <div class="contact-info-item">
+          <div class="icon-badge">✉</div>
+          <div><h3 style="margin-bottom:2px;">Email</h3><p style="margin:0;color:#4B5C55;">support@spap-portal.edu</p></div>
+        </div>
+        <div class="contact-info-item">
+          <div class="icon-badge">☎</div>
+          <div><h3 style="margin-bottom:2px;">Phone</h3><p style="margin:0;color:#4B5C55;">+92 300 000 0000 (Mon–Fri, 9am–5pm)</p></div>
+        </div>
+        <div class="contact-info-item">
+          <div class="icon-badge">⌂</div>
+          <div><h3 style="margin-bottom:2px;">Office</h3><p style="margin:0;color:#4B5C55;">Block C, Education Tower, Rawalpindi, Punjab</p></div>
+        </div>
+      </div>
+
+      <form class="card" id="contact-form" novalidate>
+        <div class="field" id="contact-name-field">
+          <label for="contact-name">Full name</label>
+          <input type="text" id="contact-name" placeholder="Your name">
+          <div class="error-msg">Enter your name.</div>
+        </div>
+        <div class="field" id="contact-email-field">
+          <label for="contact-email">Email address</label>
+          <input type="email" id="contact-email" placeholder="you@example.com">
+          <div class="error-msg">Enter a valid email address.</div>
+        </div>
+        <div class="field" id="contact-message-field">
+          <label for="contact-message">Message</label>
+          <textarea id="contact-message" placeholder="How can we help?"></textarea>
+          <div class="error-msg">Message should be at least 10 characters.</div>
+        </div>
+        <button type="submit" class="btn btn-dark btn-block">Send message</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== LOGIN ============================== -->
+<section class="view" id="view-login">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="stamp-mini">SP</div>
+      <h2>Log in to your ledger</h2>
+      <p style="color:#5B6C64; font-size:.9rem; margin-bottom:22px;">Use <strong>demo@spap.edu</strong> / <strong>Demo1234</strong> to explore, or create your own account.</p>
+
+      <form id="login-form" novalidate>
+        <div class="field" id="login-email-field">
+          <label for="login-email">Email address</label>
+          <input type="email" id="login-email" placeholder="you@example.com" autocomplete="username">
+          <div class="error-msg">Enter a valid email address.</div>
+        </div>
+        <div class="field" id="login-password-field">
+          <label for="login-password">Password</label>
+          <div class="input-row">
+            <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+            <button type="button" class="toggle-pass">Show</button>
+          </div>
+          <div class="error-msg">Password must be at least 6 characters.</div>
+        </div>
+        <div class="form-foot">
+          <label class="checkbox-row"><input type="checkbox" id="login-remember"> Remember me</label>
+          <a href="#/forgot" style="color:var(--slate); font-weight:600;">Forgot password?</a>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top:20px;">Log in</button>
+      </form>
+      <p class="auth-switch">New here? <a href="#/register">Create an account</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== REGISTER ============================== -->
+<section class="view" id="view-register">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="stamp-mini">SP</div>
+      <h2>Create your account</h2>
+      <p style="color:#5B6C64; font-size:.9rem; margin-bottom:22px;">Takes less than a minute. All data stays in this browser.</p>
+
+      <form id="register-form" novalidate>
+        <div class="field" id="register-name-field">
+          <label for="register-name">Full name</label>
+          <input type="text" id="register-name" placeholder="Your name" autocomplete="name">
+          <div class="error-msg">Enter your full name.</div>
+        </div>
+        <div class="field" id="register-email-field">
+          <label for="register-email">Email address</label>
+          <input type="email" id="register-email" placeholder="you@example.com" autocomplete="username">
+          <div class="error-msg">Enter a valid email address.</div>
+        </div>
+        <div class="field" id="register-password-field">
+          <label for="register-password">Password</label>
+          <div class="input-row">
+            <input type="password" id="register-password" placeholder="At least 6 characters" autocomplete="new-password">
+            <button type="button" class="toggle-pass">Show</button>
+          </div>
+          <div class="strength-meter" id="register-strength"><span></span><span></span><span></span><span></span></div>
+          <div class="error-msg">Password must be at least 6 characters.</div>
+        </div>
+        <div class="field" id="register-confirm-field">
+          <label for="register-confirm">Confirm password</label>
+          <input type="password" id="register-confirm" placeholder="Repeat password" autocomplete="new-password">
+          <div class="error-msg">Passwords do not match.</div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px;">Create account</button>
+      </form>
+      <p class="auth-switch">Already registered? <a href="#/login">Log in</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== FORGOT PASSWORD ============================== -->
+<section class="view" id="view-forgot">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="stamp-mini">?</div>
+      <h2>Reset your password</h2>
+      <p style="color:#5B6C64; font-size:.9rem; margin-bottom:22px;">Enter the email on your account and we'll simulate sending reset instructions.</p>
+
+      <form id="forgot-form" novalidate>
+        <div class="field" id="forgot-email-field">
+          <label for="forgot-email">Email address</label>
+          <input type="email" id="forgot-email" placeholder="you@example.com">
+          <div class="error-msg">Enter a valid email address.</div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Send reset instructions</button>
+      </form>
+      <p class="auth-switch">Remembered it after all? <a href="#/login">Back to log in</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== RESET PASSWORD ============================== -->
+<section class="view" id="view-reset">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="stamp-mini">✓</div>
+      <h2>Choose a new password</h2>
+      <p style="color:#5B6C64; font-size:.9rem; margin-bottom:22px;">This simulates the screen a reset-link would open.</p>
+
+      <form id="reset-form" novalidate>
+        <div class="field" id="reset-password-field">
+          <label for="reset-password">New password</label>
+          <div class="input-row">
+            <input type="password" id="reset-password" placeholder="At least 6 characters">
+            <button type="button" class="toggle-pass">Show</button>
+          </div>
+          <div class="strength-meter" id="reset-strength"><span></span><span></span><span></span><span></span></div>
+          <div class="error-msg">Password must be at least 6 characters.</div>
+        </div>
+        <div class="field" id="reset-confirm-field">
+          <label for="reset-confirm">Confirm new password</label>
+          <input type="password" id="reset-confirm" placeholder="Repeat password">
+          <div class="error-msg">Passwords do not match.</div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Update password</button>
+      </form>
+      <p class="auth-switch"><a href="#/login">Back to log in</a></p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ============================== FOOTER ============================== -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="brand" style="color:var(--chalk); margin-bottom:10px;"><span class="brand-mark">SP</span> SPAP</div>
+        <p>A student performance analytics ledger — built as a front-end prototype for tracking grades, attendance, and growth in one place.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul><li><a href="#/dashboard">Dashboard</a></li><li><a href="#/report">Reports</a></li><li><a href="#/about">About</a></li></ul>
+      </div>
+      <div>
+        <h4>Account</h4>
+        <ul><li><a href="#/login">Log in</a></li><li><a href="#/register">Sign up</a></li><li><a href="#/forgot">Reset password</a></li></ul>
+      </div>
+      <div>
+        <h4>Support</h4>
+        <ul><li><a href="#/contact">Contact us</a></li><li><a href="#/home">Help center</a></li></ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="year"></span> SPAP — Student Performance Analytics Portal. Prototype build.</span>
+      <span>Made for a front-end coursework project.</span>
+    </div>
+  </div>
 </footer>
 
-<script src="js/script.js"></script>
+<div id="toast-region" aria-live="polite"></div>
 
+<script src="java.js"></script>
 </body>
 </html>
