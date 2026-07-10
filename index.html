@@ -7,39 +7,85 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@500;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<script>
+  /* Applied before paint to avoid a light-mode flash on load */
+  (function(){
+    var saved = localStorage.getItem('spap_theme');
+    var theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
 </head>
 <body>
-
+ 
+<a href="#main-content" class="skip-link">Skip to main content</a>
+ 
 <!-- ============================== NAV ============================== -->
-<nav class="site-nav">
+<nav class="site-nav" aria-label="Primary">
   <div class="nav-inner">
-    <a href="#/home" class="brand"><span class="brand-mark">SP</span> SPAP</a>
-
+    <a href="#/home" class="brand"><span class="brand-mark" aria-hidden="true">SP</span> SPAP</a>
+ 
     <ul class="nav-links" id="nav-links">
-      <li><a href="#/home" data-route="home">Home</a></li>
-      <li><a href="#/about" data-route="about">About</a></li>
-      <li><a href="#/dashboard" data-route="dashboard">Dashboard</a></li>
-      <li><a href="#/report" data-route="report">Reports</a></li>
-      <li><a href="#/contact" data-route="contact">Contact</a></li>
+      <li><a href="#/home" data-route="home" data-roles="guest,student,teacher,admin">Home</a></li>
+      <li><a href="#/about" data-route="about" data-roles="guest,student,teacher,admin">About</a></li>
+      <li><a href="#/dashboard" data-route="dashboard" data-roles="student,teacher,admin">Dashboard</a></li>
+      <li><a href="#/report" data-route="report" data-roles="student,teacher,admin">Reports</a></li>
+      <li><a href="#/contact" data-route="contact" data-roles="guest,student,teacher,admin">Contact</a></li>
     </ul>
-
+ 
     <div class="nav-actions">
-      <div class="nav-user" id="nav-user" style="display:none;">
-        <div class="nav-avatar" id="nav-avatar-initials">DU</div>
-        <span style="font-weight:600; font-size:.9rem;">Hi, <span id="nav-user-name">Student</span></span>
-        <button class="btn btn-outline btn-sm" id="logout-btn">Log out</button>
+      <button class="icon-btn theme-toggle" id="theme-toggle-btn" type="button" aria-label="Toggle dark mode" aria-pressed="false">
+        <span class="sun" aria-hidden="true">☀</span><span class="moon" aria-hidden="true">☾</span>
+      </button>
+ 
+      <div class="nav-user" id="nav-user" style="display:none; gap:8px; align-items:center;">
+ 
+        <div class="nav-popover-wrap">
+          <button class="icon-btn" id="notif-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Notifications">
+            🔔<span class="badge-dot" id="notif-count" hidden>0</span>
+          </button>
+          <div class="popover" id="notif-panel" role="menu" aria-label="Notifications">
+            <div class="popover-head">
+              <h4>Notifications</h4>
+              <button type="button" id="notif-mark-all">Mark all read</button>
+            </div>
+            <div class="notif-list" id="notif-list"></div>
+          </div>
+        </div>
+ 
+        <div class="nav-popover-wrap">
+          <button class="icon-btn account-nav-btn" id="account-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Account menu" style="border-radius:50%; padding:0; overflow:hidden;">
+            <span class="nav-avatar" id="nav-avatar-initials" style="width:100%; height:100%; border-radius:50%;">DU</span>
+          </button>
+          <div class="popover" id="account-panel" role="menu" aria-label="Account">
+            <div class="account-menu-header">
+              <span class="nav-avatar" id="account-panel-initials">DU</span>
+              <div>
+                <strong id="account-panel-name">Student</strong>
+                <span id="account-panel-role">Student</span>
+              </div>
+            </div>
+            <div class="account-menu">
+              <a href="#/account" data-route="account">⚙ Account settings</a>
+              <a href="#/dashboard" data-route="dashboard">▦ My dashboard</a>
+              <hr>
+              <button type="button" id="logout-btn" class="danger">⎋ Log out</button>
+            </div>
+          </div>
+        </div>
       </div>
+ 
       <div id="nav-guest" style="display:flex; gap:8px;">
         <a href="#/login" class="btn btn-outline btn-sm">Log in</a>
         <a href="#/register" class="btn btn-dark btn-sm">Sign up</a>
       </div>
-      <button class="hamburger" id="hamburger-btn" aria-label="Toggle menu"><span></span><span></span><span></span></button>
+      <button class="hamburger" id="hamburger-btn" aria-label="Toggle menu" aria-expanded="false" aria-controls="nav-links"><span></span><span></span><span></span></button>
     </div>
   </div>
 </nav>
-
-<main>
-
+ 
+<main id="main-content">
+ 
 <!-- ============================== HOME ============================== -->
 <section class="view" id="view-home">
   <div class="hero">
@@ -63,13 +109,13 @@
       </div>
     </div>
   </div>
-
+ 
   <section class="section">
     <div class="container">
       <div class="section-head">
         <span class="eyebrow">What's inside</span>
         <h2>One portal, three ways to see progress</h2>
-        <p style="color:#4B5C55;">Built for the three people who care most about a grade: the student earning it, the teacher recording it, and the parent watching from home.</p>
+        <p style="color:var(--text-muted);">Built for the three people who care most about a grade: the student earning it, the teacher recording it, and the parent watching from home.</p>
       </div>
       <div class="grid grid-3">
         <div class="card">
@@ -90,7 +136,7 @@
       </div>
     </div>
   </section>
-
+ 
   <section class="section section-alt">
     <div class="container">
       <div class="grid grid-4">
@@ -101,16 +147,16 @@
       </div>
     </div>
   </section>
-
+ 
   <section class="section">
     <div class="container text-center">
       <h2>Ready to see your own ledger?</h2>
-      <p style="color:#4B5C55; max-width:50ch; margin:0 auto 22px;">Sign up in under a minute — this is a front-end simulation, so no real student data ever leaves your browser.</p>
+      <p style="color:var(--text-muted); max-width:50ch; margin:0 auto 22px;">Sign up in under a minute — this is a front-end simulation, so no real student data ever leaves your browser.</p>
       <a href="#/register" class="btn btn-dark">Get started free</a>
     </div>
   </section>
 </section>
-
+ 
 <!-- ============================== ABOUT ============================== -->
 <section class="view" id="view-about">
   <div class="about-hero">
@@ -120,15 +166,15 @@
       <p style="color:var(--chalk-dim); max-width:56ch;">SPAP started as a classroom spreadsheet that grew up. Today it's a lightweight analytics layer schools use to turn raw scores into a running conversation about student growth.</p>
     </div>
   </div>
-
+ 
   <section class="section">
     <div class="container grid grid-2">
       <div>
         <span class="badge-eyebrow">Our approach</span>
         <h2>Three principles guide every feature</h2>
-        <div class="value-row"><span class="num">01</span><div><h3 style="margin-bottom:4px;">Show, don't archive</h3><p style="margin:0;color:#4B5C55;">Data that only lives in a filing cabinet can't help anyone. Every score surfaces somewhere a teacher or student will actually look.</p></div></div>
-        <div class="value-row"><span class="num">02</span><div><h3 style="margin-bottom:4px;">Context over raw numbers</h3><p style="margin:0;color:#4B5C55;">An 82% means little alone. Trend lines and class rank give every score a story.</p></div></div>
-        <div class="value-row"><span class="num">03</span><div><h3 style="margin-bottom:4px;">Private by default</h3><p style="margin:0;color:#4B5C55;">This prototype keeps everything in your own browser's local storage — nothing is sent anywhere.</p></div></div>
+        <div class="value-row"><span class="num">01</span><div><h3 style="margin-bottom:4px;">Show, don't archive</h3><p style="margin:0;color:var(--text-muted);">Data that only lives in a filing cabinet can't help anyone. Every score surfaces somewhere a teacher or student will actually look.</p></div></div>
+        <div class="value-row"><span class="num">02</span><div><h3 style="margin-bottom:4px;">Context over raw numbers</h3><p style="margin:0;color:var(--text-muted);">An 82% means little alone. Trend lines and class rank give every score a story.</p></div></div>
+        <div class="value-row"><span class="num">03</span><div><h3 style="margin-bottom:4px;">Private by default</h3><p style="margin:0;color:var(--text-muted);">This prototype keeps everything in your own browser's local storage — nothing is sent anywhere.</p></div></div>
       </div>
       <div>
         <span class="badge-eyebrow">How the ledger came together</span>
@@ -141,7 +187,7 @@
       </div>
     </div>
   </section>
-
+ 
   <section class="section section-alt">
     <div class="container grid grid-3">
       <div class="card"><div class="icon-badge">🎓</div><h3>For students</h3><p>See exactly where a grade stands and which subject needs the next study session.</p></div>
@@ -150,40 +196,121 @@
     </div>
   </section>
 </section>
-
-<!-- ============================== DASHBOARD ============================== -->
+ 
+<!-- ============================== DASHBOARD (role-based) ============================== -->
 <section class="view" id="view-dashboard">
   <div class="container">
-    <div class="page-header">
-      <div>
-        <span class="badge-eyebrow">Student dashboard</span>
-        <h1>Welcome back, <span id="dash-welcome-name">Student</span></h1>
-        <p class="sub">Here's how this term is tracking so far.</p>
+ 
+    <!-- ---------- STUDENT DASHBOARD ---------- -->
+    <div class="dash-role" id="dash-role-student">
+      <div class="page-header">
+        <div>
+          <span class="badge-eyebrow">Student dashboard</span>
+          <h1>Welcome back, <span id="dash-welcome-name">Student</span></h1>
+          <p class="sub">Here's how this term is tracking so far.</p>
+        </div>
+        <div class="grade-stamp" id="dash-grade-stamp">A</div>
       </div>
-      <div class="grade-stamp" id="dash-grade-stamp">A</div>
-    </div>
-
-    <div class="grid grid-4" id="dash-stat-grid"></div>
-
-    <div class="dash-grid">
-      <div class="card">
-        <h3 style="margin-bottom:16px;">Subject breakdown</h3>
-        <div id="dash-subject-list"></div>
+ 
+      <div class="grid grid-4" id="dash-stat-grid"></div>
+ 
+      <div class="dash-grid">
+        <div class="card">
+          <h3 style="margin-bottom:16px;">Subject breakdown</h3>
+          <div id="dash-subject-list"></div>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:16px;">Recent activity</h3>
+          <table class="data-table" style="min-width:auto;">
+            <caption class="sr-only" style="position:absolute; left:-9999px;">Recent account activity</caption>
+            <tbody id="dash-activity-body"></tbody>
+          </table>
+        </div>
       </div>
-      <div class="card">
-        <h3 style="margin-bottom:16px;">Recent activity</h3>
-        <table class="data-table" style="min-width:auto;">
-          <tbody id="dash-activity-body"></tbody>
-        </table>
+ 
+      <div style="margin:26px 0 60px; text-align:right;">
+        <a href="#/report" class="btn btn-outline">View full class report →</a>
       </div>
     </div>
-
-    <div style="margin:26px 0 60px; text-align:right;">
-      <a href="#/report" class="btn btn-outline">View full class report →</a>
+ 
+    <!-- ---------- TEACHER DASHBOARD ---------- -->
+    <div class="dash-role" id="dash-role-teacher">
+      <div class="page-header">
+        <div>
+          <span class="badge-eyebrow">Teacher dashboard</span>
+          <h1>Welcome, <span id="teacher-welcome-name">Teacher</span></h1>
+          <p class="sub" id="teacher-classes-sub">Here's how your classes are performing.</p>
+        </div>
+        <span class="role-badge role-teacher">Teacher</span>
+      </div>
+ 
+      <div class="grid grid-4" id="teacher-stat-grid"></div>
+ 
+      <div class="card" style="margin-top:22px;">
+        <div class="toolbar" style="margin-top:0;">
+          <h3 style="margin:0; flex:1;">My students</h3>
+          <div class="search-box" style="max-width:280px;">
+            <input type="text" id="teacher-search" placeholder="Search my students…" aria-label="Search my students">
+          </div>
+        </div>
+        <div class="table-wrap" style="border:none;">
+          <table class="data-table" id="teacher-table">
+            <thead>
+              <tr>
+                <th>Student</th><th>Class</th><th>GPA</th><th>Average</th><th>Attendance</th>
+              </tr>
+            </thead>
+            <tbody id="teacher-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div style="height:60px;"></div>
     </div>
+ 
+    <!-- ---------- ADMIN DASHBOARD ---------- -->
+    <div class="dash-role" id="dash-role-admin">
+      <div class="page-header">
+        <div>
+          <span class="badge-eyebrow">Administrator dashboard</span>
+          <h1>Welcome, <span id="admin-welcome-name">Admin</span></h1>
+          <p class="sub">School-wide performance at a glance.</p>
+        </div>
+        <span class="role-badge role-admin">Administrator</span>
+      </div>
+ 
+      <div class="grid grid-4" id="admin-stat-grid"></div>
+ 
+      <div class="dash-grid">
+        <div class="card">
+          <h3 style="margin-bottom:16px;">Average score by class</h3>
+          <div id="admin-class-list"></div>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:16px;">Top performers</h3>
+          <table class="data-table" style="min-width:auto;">
+            <tbody id="admin-top-body"></tbody>
+          </table>
+        </div>
+      </div>
+ 
+      <div class="card" style="margin-top:22px;">
+        <h3 style="margin-bottom:4px;">Manage accounts</h3>
+        <p class="sub" style="margin-bottom:16px;">Registered users on this device (simulated — stored in local storage).</p>
+        <div class="table-wrap" style="border:none;">
+          <table class="data-table manage-table" id="admin-users-table">
+            <thead>
+              <tr><th>Name</th><th>Email</th><th>Role</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="admin-users-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div style="height:60px;"></div>
+    </div>
+ 
   </div>
 </section>
-
+ 
 <!-- ============================== REPORT ============================== -->
 <section class="view" id="view-report">
   <div class="container">
@@ -194,7 +321,7 @@
         <p class="sub" id="report-count">Loading students…</p>
       </div>
     </div>
-
+ 
     <div class="toolbar">
       <div class="search-box">
         <input type="text" id="report-search" placeholder="Search by student name or class…" aria-label="Search students">
@@ -203,7 +330,7 @@
         <option value="all">All classes</option>
       </select>
     </div>
-
+ 
     <div class="table-wrap">
       <table class="data-table" id="report-table">
         <thead>
@@ -223,15 +350,15 @@
         <p>Try a different name, or clear the class filter.</p>
       </div>
     </div>
-    <p style="color:#7A8B83; font-size:.85rem; margin:14px 0 60px;">Tip: click any row to open that student's full profile. Click a column header to sort.</p>
+    <p style="color:var(--text-muted-soft); font-size:.85rem; margin:14px 0 60px;">Tip: click any row to open that student's full profile. Click a column header to sort.</p>
   </div>
 </section>
-
+ 
 <!-- ============================== PROFILE ============================== -->
 <section class="view" id="view-profile">
   <div class="container">
     <button class="btn btn-outline btn-sm" id="profile-back-btn" style="margin-top:24px;">← Back to report</button>
-
+ 
     <div class="profile-header">
       <div class="profile-avatar" id="profile-avatar-initials">AK</div>
       <div class="profile-meta">
@@ -241,7 +368,7 @@
       <span class="pill pill-good mono" id="profile-gpa-badge" style="font-size:.9rem; padding:8px 16px;">GPA 0.00</span>
       <div class="grade-stamp" id="profile-grade-stamp" style="background:rgba(255,255,255,0.08); color:var(--chalk-yellow);">A</div>
     </div>
-
+ 
     <div class="dash-grid">
       <div class="card">
         <h3 style="margin-bottom:16px;">Subject performance</h3>
@@ -268,32 +395,32 @@
     <div style="height:60px;"></div>
   </div>
 </section>
-
+ 
 <!-- ============================== CONTACT ============================== -->
 <section class="view" id="view-contact">
   <div class="container section">
     <div class="section-head">
       <span class="eyebrow">Get in touch</span>
       <h1>Questions about your ledger?</h1>
-      <p style="color:#4B5C55;">Whether you're a teacher onboarding a class or a parent with a question about a grade, send a note and we'll route it to the right desk.</p>
+      <p style="color:var(--text-muted);">Whether you're a teacher onboarding a class or a parent with a question about a grade, send a note and we'll route it to the right desk.</p>
     </div>
-
+ 
     <div class="contact-grid">
       <div>
         <div class="contact-info-item">
           <div class="icon-badge">✉</div>
-          <div><h3 style="margin-bottom:2px;">Email</h3><p style="margin:0;color:#4B5C55;">support@spap-portal.edu</p></div>
+          <div><h3 style="margin-bottom:2px;">Email</h3><p style="margin:0;color:var(--text-muted);">support@spap-portal.edu</p></div>
         </div>
         <div class="contact-info-item">
           <div class="icon-badge">☎</div>
-          <div><h3 style="margin-bottom:2px;">Phone</h3><p style="margin:0;color:#4B5C55;">+92 300 000 0000 (Mon–Fri, 9am–5pm)</p></div>
+          <div><h3 style="margin-bottom:2px;">Phone</h3><p style="margin:0;color:var(--text-muted);">+92 300 000 0000 (Mon–Fri, 9am–5pm)</p></div>
         </div>
         <div class="contact-info-item">
           <div class="icon-badge">⌂</div>
-          <div><h3 style="margin-bottom:2px;">Office</h3><p style="margin:0;color:#4B5C55;">Block C, Education Tower, Rawalpindi, Punjab</p></div>
+          <div><h3 style="margin-bottom:2px;">Office</h3><p style="margin:0;color:var(--text-muted);">Block C, Education Tower, Rawalpindi, Punjab</p></div>
         </div>
       </div>
-
+ 
       <form class="card" id="contact-form" novalidate>
         <div class="field" id="contact-name-field">
           <label for="contact-name">Full name</label>
@@ -315,15 +442,20 @@
     </div>
   </div>
 </section>
-
+ 
 <!-- ============================== LOGIN ============================== -->
 <section class="view" id="view-login">
   <div class="auth-wrap">
     <div class="auth-card">
       <div class="stamp-mini">SP</div>
       <h2>Log in to your ledger</h2>
-      <p style="color:#5B6C64; font-size:.9rem; margin-bottom:22px;">Use <strong>demo@spap.edu</strong> / <strong>Demo1234</strong> to explore, or create your own account.</p>
-
+      <p style="color:var(--text-muted); font-size:.9rem; margin-bottom:8px;">Try a role — or create your own account below.</p>
+      <div class="grid grid-3" style="gap:8px; margin-bottom:20px;">
+        <div class="card" style="padding:10px; text-align:center;"><span class="role-badge role-student" style="margin-bottom:6px;">Student</span><p class="hint" style="margin:0;">demo@spap.edu<br>Demo1234</p></div>
+        <div class="card" style="padding:10px; text-align:center;"><span class="role-badge role-teacher" style="margin-bottom:6px;">Teacher</span><p class="hint" style="margin:0;">teacher@spap.edu<br>Teacher123</p></div>
+        <div class="card" style="padding:10px; text-align:center;"><span class="role-badge role-admin" style="margin-bottom:6px;">Admin</span><p class="hint" style="margin:0;">admin@spap.edu<br>Admin123</p></div>
+      </div>
+ 
       <form id="login-form" novalidate>
         <div class="field" id="login-email-field">
           <label for="login-email">Email address</label>
@@ -348,15 +480,15 @@
     </div>
   </div>
 </section>
-
+ 
 <!-- ============================== REGISTER ============================== -->
 <section class="view" id="view-register">
   <div class="auth-wrap">
     <div class="auth-card">
       <div class="stamp-mini">SP</div>
       <h2>Create your account</h2>
-      <p style="color:#5B6C64; font-size:.9rem; margin-bottom:22px;">Takes less than a minute. All data stays in this browser.</p>
-
+      <p style="color:var(--text-muted); font-size:.9rem; margin-bottom:22px;">Takes less than a minute. All data stays in this browser.</p>
+ 
       <form id="register-form" novalidate>
         <div class="field" id="register-name-field">
           <label for="register-name">Full name</label>
@@ -367,6 +499,15 @@
           <label for="register-email">Email address</label>
           <input type="email" id="register-email" placeholder="you@example.com" autocomplete="username">
           <div class="error-msg">Enter a valid email address.</div>
+        </div>
+        <div class="field" id="register-role-field">
+          <label for="register-role">I am a…</label>
+          <select id="register-role">
+            <option value="student">Student</option>
+            <option value="teacher">Teacher</option>
+            <option value="admin">Administrator</option>
+          </select>
+          <p class="hint">This is a prototype — pick any role to preview that dashboard.</p>
         </div>
         <div class="field" id="register-password-field">
           <label for="register-password">Password</label>
@@ -388,15 +529,15 @@
     </div>
   </div>
 </section>
-
+ 
 <!-- ============================== FORGOT PASSWORD ============================== -->
 <section class="view" id="view-forgot">
   <div class="auth-wrap">
     <div class="auth-card">
       <div class="stamp-mini">?</div>
       <h2>Reset your password</h2>
-      <p style="color:#5B6C64; font-size:.9rem; margin-bottom:22px;">Enter the email on your account and we'll simulate sending reset instructions.</p>
-
+      <p style="color:var(--text-muted); font-size:.9rem; margin-bottom:22px;">Enter the email on your account and we'll simulate sending reset instructions.</p>
+ 
       <form id="forgot-form" novalidate>
         <div class="field" id="forgot-email-field">
           <label for="forgot-email">Email address</label>
@@ -409,15 +550,15 @@
     </div>
   </div>
 </section>
-
+ 
 <!-- ============================== RESET PASSWORD ============================== -->
 <section class="view" id="view-reset">
   <div class="auth-wrap">
     <div class="auth-card">
       <div class="stamp-mini">✓</div>
       <h2>Choose a new password</h2>
-      <p style="color:#5B6C64; font-size:.9rem; margin-bottom:22px;">This simulates the screen a reset-link would open.</p>
-
+      <p style="color:var(--text-muted); font-size:.9rem; margin-bottom:22px;">This simulates the screen a reset-link would open.</p>
+ 
       <form id="reset-form" novalidate>
         <div class="field" id="reset-password-field">
           <label for="reset-password">New password</label>
@@ -439,9 +580,112 @@
     </div>
   </div>
 </section>
-
+ 
+<!-- ============================== ACCOUNT / PROFILE MANAGEMENT ============================== -->
+<section class="view" id="view-account">
+  <div class="container">
+    <div class="page-header">
+      <div>
+        <span class="badge-eyebrow">Account</span>
+        <h1>Profile &amp; settings</h1>
+        <p class="sub">Manage your personal info, password, and preferences.</p>
+      </div>
+    </div>
+ 
+    <div class="account-grid">
+      <div class="card account-side">
+        <div class="profile-avatar" id="account-avatar-initials">DU</div>
+        <h3 id="account-side-name">Student Name</h3>
+        <span class="role-badge role-student" id="account-side-role">Student</span>
+        <div class="settings-tabgroup" role="tablist" aria-label="Account settings sections">
+          <button type="button" class="active" role="tab" aria-selected="true" data-tab="profile">👤 Profile info</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="security">🔒 Security</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="preferences">🎛 Preferences</button>
+        </div>
+      </div>
+ 
+      <div>
+        <!-- Profile info -->
+        <div class="card settings-section active" id="settings-profile" role="tabpanel">
+          <h3 style="margin-bottom:16px;">Profile information</h3>
+          <form id="account-profile-form" novalidate>
+            <div class="field" id="account-name-field">
+              <label for="account-name">Full name</label>
+              <input type="text" id="account-name" autocomplete="name">
+              <div class="error-msg">Enter your full name.</div>
+            </div>
+            <div class="field" id="account-email-field">
+              <label for="account-email">Email address</label>
+              <input type="email" id="account-email" autocomplete="username">
+              <div class="error-msg">Enter a valid email address.</div>
+            </div>
+            <div class="field">
+              <label for="account-role">Role</label>
+              <input type="text" id="account-role" disabled>
+              <p class="hint">Roles are assigned by an administrator in this prototype.</p>
+            </div>
+            <button type="submit" class="btn btn-dark">Save changes</button>
+          </form>
+        </div>
+ 
+        <!-- Security -->
+        <div class="card settings-section" id="settings-security" role="tabpanel">
+          <h3 style="margin-bottom:16px;">Change password</h3>
+          <form id="account-security-form" novalidate>
+            <div class="field" id="account-current-field">
+              <label for="account-current-password">Current password</label>
+              <input type="password" id="account-current-password" autocomplete="current-password">
+              <div class="error-msg">Enter your current password.</div>
+            </div>
+            <div class="field" id="account-new-field">
+              <label for="account-new-password">New password</label>
+              <div class="input-row">
+                <input type="password" id="account-new-password" autocomplete="new-password">
+                <button type="button" class="toggle-pass">Show</button>
+              </div>
+              <div class="strength-meter" id="account-new-strength"><span></span><span></span><span></span><span></span></div>
+              <div class="error-msg">Password must be at least 6 characters.</div>
+            </div>
+            <div class="field" id="account-confirm-field">
+              <label for="account-confirm-password">Confirm new password</label>
+              <input type="password" id="account-confirm-password" autocomplete="new-password">
+              <div class="error-msg">Passwords do not match.</div>
+            </div>
+            <button type="submit" class="btn btn-dark">Update password</button>
+          </form>
+        </div>
+ 
+        <!-- Preferences -->
+        <div class="card settings-section" id="settings-preferences" role="tabpanel">
+          <h3 style="margin-bottom:16px;">Appearance</h3>
+          <div class="theme-pref-row" role="radiogroup" aria-label="Theme preference">
+            <label><input type="radio" name="theme-pref" value="light"><span>☀ Light</span></label>
+            <label><input type="radio" name="theme-pref" value="dark"><span>☾ Dark</span></label>
+            <label><input type="radio" name="theme-pref" value="system"><span>🖥 System</span></label>
+          </div>
+ 
+          <h3 style="margin:26px 0 4px;">Notifications</h3>
+          <div class="switch-row">
+            <div><strong>Grade updates</strong><p class="hint" style="margin:2px 0 0;">Get notified when a new score is posted.</p></div>
+            <label class="switch"><input type="checkbox" id="pref-grade-notifs" checked><span class="track"></span></label>
+          </div>
+          <div class="switch-row">
+            <div><strong>Attendance alerts</strong><p class="hint" style="margin:2px 0 0;">Get notified about attendance changes.</p></div>
+            <label class="switch"><input type="checkbox" id="pref-attendance-notifs" checked><span class="track"></span></label>
+          </div>
+          <div class="switch-row">
+            <div><strong>Product announcements</strong><p class="hint" style="margin:2px 0 0;">Occasional news about SPAP itself.</p></div>
+            <label class="switch"><input type="checkbox" id="pref-news-notifs"><span class="track"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="height:60px;"></div>
+  </div>
+</section>
+ 
 </main>
-
+ 
 <!-- ============================== FOOTER ============================== -->
 <footer class="site-footer">
   <div class="container">
@@ -469,9 +713,9 @@
     </div>
   </div>
 </footer>
-
+ 
 <div id="toast-region" aria-live="polite"></div>
-
+ 
 <script src="java.js"></script>
 </body>
 </html>

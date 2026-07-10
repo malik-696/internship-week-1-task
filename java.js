@@ -1,7 +1,18 @@
 /* ==========================================================================
    Student Performance Analytics Portal — app.js
-   Front-end only prototype. "Backend" behaviour (auth, password reset,
-   saved records) is simulated with localStorage.
+   Front-end only prototype. "Backend" behaviour (auth, roles, password
+   reset, notifications, preferences) is simulated with localStorage.
+
+   PERFORMANCE NOTES (see task: "optimize JavaScript for better performance"):
+   - DOM lookups for elements that are queried often are cached once in
+     the `dom` object below instead of re-running getElementById per call.
+   - Table rows (report + teacher table) use ONE delegated click listener
+     on the tbody instead of attaching a listener per <tr>, so redraws
+     stay cheap even as row counts grow.
+   - Search inputs are debounced so filtering doesn't run on every
+     keystroke while typing fast.
+   - Row/element HTML is built as a single string and assigned once via
+     innerHTML (one reflow) rather than many incremental DOM writes.
    ========================================================================== */
 
 /* ---------------------------------------------------------------------- */
@@ -52,61 +63,248 @@ function initialsOf(name){
 STUDENTS.forEach(s => { s.avg = avgScore(s); s.gpa = gpaOf(s.avg); s.grade = letterGrade(s.avg); });
 STUDENTS.sort((a,b)=>b.avg-a.avg).forEach((s,i)=> s.rank = i+1);
 
+const ALL_CLASSES = [...new Set(STUDENTS.map(s => s.className))].sort();
+
 /* ---------------------------------------------------------------------- */
 /* Storage helpers (simulated backend)                                     */
 /* ---------------------------------------------------------------------- */
-const STORE_USERS = "spap_users";
+const STORE_USERS   = "spap_users";
 const STORE_SESSION = "spap_session";
-const STORE_RESET = "spap_reset_token";
+const STORE_RESET   = "spap_reset_token";
+const STORE_THEME   = "spap_theme";
+const STORE_NOTIFS  = "spap_notif_reads"; // { [email]: [notifId, ...] }
 
 function getUsers(){
   try { return JSON.parse(localStorage.getItem(STORE_USERS)) || []; }
   catch(e){ return []; }
 }
 function saveUsers(list){ localStorage.setItem(STORE_USERS, JSON.stringify(list)); }
-function seedDemoUser(){
+
+function seedDemoUsers(){
   const users = getUsers();
-  if(!users.find(u=>u.email === "demo@spap.edu")){
-    users.push({ name:"Demo User", email:"demo@spap.edu", password:"Demo1234", studentId:1 });
-    saveUsers(users);
-  }
+  const seed = [
+    { name:"Demo User",      email:"demo@spap.edu",    password:"Demo1234",  role:"student", studentId:1, classes:[] },
+    { name:"Ayesha Farooqi", email:"teacher@spap.edu",  password:"Teacher123",role:"teacher", studentId:null, classes:["Grade 10 - A","Grade 9 - A"] },
+    { name:"Imran Sheikh",   email:"admin@spap.edu",    password:"Admin123",  role:"admin",   studentId:null, classes:[] },
+  ];
+  let changed = false;
+  seed.forEach(u => {
+    if(!users.find(x => x.email === u.email)){ users.push(u); changed = true; }
+  });
+  if(changed) saveUsers(users);
 }
-seedDemoUser();
+seedDemoUsers();
 
 function getSession(){
   try { return JSON.parse(localStorage.getItem(STORE_SESSION)); }
   catch(e){ return null; }
 }
-function setSession(user){ localStorage.setItem(STORE_SESSION, JSON.stringify({ name:user.name, email:user.email, studentId:user.studentId })); }
+function setSession(user){
+  localStorage.setItem(STORE_SESSION, JSON.stringify({
+    name: user.name, email: user.email, role: user.role || "student",
+    studentId: user.studentId || null, classes: user.classes || []
+  }));
+}
 function clearSession(){ localStorage.removeItem(STORE_SESSION); }
+function currentRole(){ return (getSession() && getSession().role) || "guest"; }
 
 /* ---------------------------------------------------------------------- */
 /* Toasts                                                                  */
 /* ---------------------------------------------------------------------- */
 function showToast(message, type="info"){
-  const region = document.getElementById("toast-region");
+  const region = dom.toastRegion;
   const el = document.createElement("div");
   el.className = `toast ${type}`;
+  el.setAttribute("role", "status");
   el.textContent = message;
   region.appendChild(el);
   setTimeout(()=>{ el.style.opacity="0"; el.style.transform="translateY(8px)"; setTimeout(()=>el.remove(), 250); }, 3200);
 }
 
 /* ---------------------------------------------------------------------- */
+/* Cached DOM references (performance: avoid repeated getElementById)      */
+/* ---------------------------------------------------------------------- */
+const dom = {};
+function cacheDom(){
+  [
+    "toast-region","nav-links","hamburger-btn","nav-user","nav-guest",
+    "nav-avatar-initials","logout-btn","theme-toggle-btn",
+    "notif-btn","notif-panel","notif-list","notif-count","notif-mark-all",
+    "account-btn","account-panel","account-panel-initials","account-panel-name","account-panel-role",
+    "year",
+  ].forEach(id => { dom[toCamel(id)] = document.getElementById(id); });
+  dom.toastRegion = document.getElementById("toast-region");
+}
+function toCamel(id){ return id.replace(/-([a-z0-9])/g, (_,c)=>c.toUpperCase()); }
+
+/* ---------------------------------------------------------------------- */
+/* Debounce utility (performance: avoid re-filtering on every keystroke)   */
+/* ---------------------------------------------------------------------- */
+function debounce(fn, wait=150){
+  let t;
+  return function(...args){
+    clearTimeout(t);
+    t = setTimeout(()=> fn.apply(this, args), wait);
+  };
+}
+
+/* ---------------------------------------------------------------------- */
+/* Theme (dark / light mode)                                               */
+/* ---------------------------------------------------------------------- */
+function applyTheme(theme){
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem(STORE_THEME, theme);
+  if(dom.themeToggleBtn) dom.themeToggleBtn.setAttribute("aria-pressed", theme === "dark" ? "true" : "false");
+  const radios = document.querySelectorAll('input[name="theme-pref"]');
+  radios.forEach(r => { r.checked = (r.value === theme); });
+}
+function currentTheme(){ return document.documentElement.getAttribute("data-theme") || "light"; }
+function toggleTheme(){ applyTheme(currentTheme() === "dark" ? "light" : "dark"); }
+function initThemeControls(){
+  dom.themeToggleBtn.addEventListener("click", toggleTheme);
+  document.querySelectorAll('input[name="theme-pref"]').forEach(radio => {
+    radio.addEventListener("change", () => {
+      if(radio.value === "system"){
+        const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        applyTheme(prefersDark ? "dark" : "light");
+        localStorage.removeItem(STORE_THEME);
+      } else {
+        applyTheme(radio.value);
+      }
+    });
+  });
+  const radios = document.querySelectorAll('input[name="theme-pref"]');
+  if(!localStorage.getItem(STORE_THEME) && radios.length){
+    radios.forEach(r => r.checked = r.value === "system");
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Notifications                                                           */
+/* ---------------------------------------------------------------------- */
+const NOTIF_TEMPLATES = {
+  student: [
+    { id:"s1", title:"New Mathematics score posted", when:"2h ago" },
+    { id:"s2", title:"Attendance updated for this week", when:"1d ago" },
+    { id:"s3", title:"English essay feedback is ready", when:"3d ago" },
+  ],
+  teacher: [
+    { id:"t1", title:"3 assignments awaiting grading", when:"1h ago" },
+    { id:"t2", title:"Usman Tariq's attendance dropped below 80%", when:"5h ago" },
+    { id:"t3", title:"New student added to Grade 9 - A", when:"2d ago" },
+  ],
+  admin: [
+    { id:"a1", title:"2 new accounts registered today", when:"30m ago" },
+    { id:"a2", title:"Grade 10 - B average dropped this term", when:"6h ago" },
+    { id:"a3", title:"Monthly performance export is ready", when:"1d ago" },
+  ],
+};
+function getReadIds(email){
+  try { return (JSON.parse(localStorage.getItem(STORE_NOTIFS)) || {})[email] || []; }
+  catch(e){ return []; }
+}
+function setReadIds(email, ids){
+  let store = {};
+  try { store = JSON.parse(localStorage.getItem(STORE_NOTIFS)) || {}; } catch(e){ store = {}; }
+  store[email] = ids;
+  localStorage.setItem(STORE_NOTIFS, JSON.stringify(store));
+}
+function renderNotifications(){
+  const session = getSession();
+  if(!session) return;
+  const items = NOTIF_TEMPLATES[session.role] || [];
+  const readIds = getReadIds(session.email);
+  const unread = items.filter(i => !readIds.includes(i.id)).length;
+
+  dom.notifCount.textContent = String(unread);
+  dom.notifCount.hidden = unread === 0;
+
+  if(items.length === 0){
+    dom.notifList.innerHTML = `<div class="notif-empty">You're all caught up.</div>`;
+    return;
+  }
+  dom.notifList.innerHTML = items.map(i => `
+    <div class="notif-item ${readIds.includes(i.id) ? "read" : ""}" data-id="${i.id}">
+      <span class="dot" aria-hidden="true"></span>
+      <div class="body"><p>${i.title}</p><span>${i.when}</span></div>
+    </div>
+  `).join("");
+}
+function markAllNotifsRead(){
+  const session = getSession();
+  if(!session) return;
+  const items = NOTIF_TEMPLATES[session.role] || [];
+  setReadIds(session.email, items.map(i => i.id));
+  renderNotifications();
+}
+
+/* ---------------------------------------------------------------------- */
+/* Popovers (notifications + account menu) — shared open/close logic       */
+/* ---------------------------------------------------------------------- */
+function initPopovers(){
+  const pairs = [
+    { btn: dom.notifBtn, panel: dom.notifPanel, onOpen: renderNotifications },
+    { btn: dom.accountBtn, panel: dom.accountPanel, onOpen: renderAccountPanel },
+  ];
+
+  pairs.forEach(({ btn, panel, onOpen }) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const willOpen = !panel.classList.contains("open");
+      pairs.forEach(p => { p.panel.classList.remove("open"); p.btn.setAttribute("aria-expanded","false"); });
+      if(willOpen){
+        panel.classList.add("open");
+        btn.setAttribute("aria-expanded","true");
+        if(onOpen) onOpen();
+      }
+    });
+  });
+
+  document.addEventListener("click", () => {
+    pairs.forEach(p => { p.panel.classList.remove("open"); p.btn.setAttribute("aria-expanded","false"); });
+  });
+  document.addEventListener("keydown", (e) => {
+    if(e.key === "Escape"){
+      pairs.forEach(p => { p.panel.classList.remove("open"); p.btn.setAttribute("aria-expanded","false"); });
+    }
+  });
+  document.querySelectorAll(".popover").forEach(p => p.addEventListener("click", e => e.stopPropagation()));
+
+  dom.notifMarkAll.addEventListener("click", markAllNotifsRead);
+
+  // delegated: clicking a notification marks just that one as read
+  dom.notifList.addEventListener("click", (e) => {
+    const item = e.target.closest(".notif-item");
+    if(!item) return;
+    const session = getSession();
+    if(!session) return;
+    const ids = getReadIds(session.email);
+    if(!ids.includes(item.dataset.id)){
+      ids.push(item.dataset.id);
+      setReadIds(session.email, ids);
+      renderNotifications();
+    }
+  });
+}
+function renderAccountPanel(){
+  const session = getSession();
+  if(!session) return;
+  dom.accountPanelInitials.textContent = initialsOf(session.name);
+  dom.accountPanelName.textContent = session.name;
+  dom.accountPanelRole.textContent = session.role.charAt(0).toUpperCase() + session.role.slice(1);
+}
+
+/* ---------------------------------------------------------------------- */
 /* Router                                                                  */
 /* ---------------------------------------------------------------------- */
-const routes = ["home","about","dashboard","report","profile","contact","login","register","forgot","reset"];
+const routes = ["home","about","dashboard","report","profile","contact","login","register","forgot","reset","account"];
+const AUTH_ROUTES = new Set(["dashboard","account"]);
 
 function parseHash(){
   const raw = (location.hash || "#/home").replace(/^#\/?/, "");
   const [route, param] = raw.split("/");
   return { route: routes.includes(route) ? route : "home", param };
 }
-
-function requireAuth(route){
-  return route === "dashboard";
-}
-
 function navigate(route, param){
   location.hash = param ? `/${route}/${param}` : `/${route}`;
 }
@@ -114,8 +312,8 @@ function navigate(route, param){
 function renderRoute(){
   let { route, param } = parseHash();
 
-  if(requireAuth(route) && !getSession()){
-    showToast("Please log in to view your dashboard.", "info");
+  if(AUTH_ROUTES.has(route) && !getSession()){
+    showToast("Please log in to continue.", "info");
     route = "login";
     history.replaceState(null, "", "#/login");
   }
@@ -123,50 +321,59 @@ function renderRoute(){
   document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
   const target = document.getElementById(`view-${route}`);
   if(target) target.classList.add("active");
-  window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+  window.scrollTo({ top: 0, behavior: "auto" });
 
-  document.querySelectorAll(".nav-links a").forEach(a=>{
-    a.classList.toggle("active", a.dataset.route === route);
-  });
+  updateAuthUI(); // must run before dashboard render so role-based visibility is correct
   closeMobileNav();
 
   if(route === "dashboard") renderDashboard();
   if(route === "report") renderReport();
   if(route === "profile") renderProfile(param);
+  if(route === "account") renderAccountSettings();
 
-  updateAuthUI();
+  document.querySelectorAll(".nav-links a").forEach(a=>{
+    const active = a.dataset.route === route;
+    a.classList.toggle("active", active);
+    if(active) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current");
+  });
 }
 window.addEventListener("hashchange", renderRoute);
 
 /* ---------------------------------------------------------------------- */
-/* Nav auth state                                                          */
+/* Nav auth + role-based menu visibility                                   */
 /* ---------------------------------------------------------------------- */
 function updateAuthUI(){
   const session = getSession();
-  const guestBox = document.getElementById("nav-guest");
-  const userBox = document.getElementById("nav-user");
+  const role = session ? session.role : "guest";
+
+  dom.navGuest.style.display = session ? "none" : "flex";
+  dom.navUser.style.display = session ? "flex" : "none";
+
   if(session){
-    guestBox.style.display = "none";
-    userBox.style.display = "flex";
-    document.getElementById("nav-user-name").textContent = session.name.split(" ")[0];
-    document.getElementById("nav-avatar-initials").textContent = initialsOf(session.name);
-  } else {
-    guestBox.style.display = "flex";
-    userBox.style.display = "none";
+    dom.navAvatarInitials.textContent = initialsOf(session.name);
+    renderNotifications();
   }
+
+  // Show/hide nav links per role (single pass, no DOM rebuild — cheap)
+  document.querySelectorAll("#nav-links a[data-roles]").forEach(a => {
+    const roles = a.dataset.roles.split(",");
+    a.parentElement.style.display = roles.includes(role) ? "" : "none";
+  });
 }
 
 /* ---------------------------------------------------------------------- */
 /* Mobile nav                                                              */
 /* ---------------------------------------------------------------------- */
 function closeMobileNav(){
-  document.getElementById("nav-links").classList.remove("open");
+  dom.navLinks.classList.remove("open");
+  dom.hamburgerBtn.setAttribute("aria-expanded","false");
 }
-document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("hamburger-btn").addEventListener("click", () => {
-    document.getElementById("nav-links").classList.toggle("open");
+function initMobileNav(){
+  dom.hamburgerBtn.addEventListener("click", () => {
+    const open = dom.navLinks.classList.toggle("open");
+    dom.hamburgerBtn.setAttribute("aria-expanded", open ? "true" : "false");
   });
-});
+}
 
 /* ---------------------------------------------------------------------- */
 /* Count-up animation                                                      */
@@ -175,6 +382,10 @@ function countUp(el, target, opts = {}){
   const duration = opts.duration || 900;
   const decimals = opts.decimals || 0;
   const suffix = opts.suffix || "";
+  if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+    el.textContent = target.toFixed(decimals) + suffix;
+    return;
+  }
   const start = performance.now();
   function tick(now){
     const p = Math.min(1, (now - start) / duration);
@@ -185,54 +396,69 @@ function countUp(el, target, opts = {}){
   }
   requestAnimationFrame(tick);
 }
+function buildStatCard({ label, value, decimals, suffix, trend }){
+  const trendClass = trend > 0 ? "trend-up" : trend < 0 ? "trend-down" : "trend-flat";
+  const trendLabel = trend > 0 ? "▲ improving" : trend < 0 ? "▼ needs focus" : "— steady";
+  return `
+    <div class="card stat-card">
+      <div class="stat-top">
+        <span class="badge-eyebrow">${label}</span>
+        <span class="stat-trend ${trendClass}">${trendLabel}</span>
+      </div>
+      <div class="stat-value mono" data-target="${value}" data-decimals="${decimals}" data-suffix="${suffix}">0</div>
+      <div class="progress-track"><div class="progress-fill"></div></div>
+    </div>
+  `;
+}
+function animateStatGrid(grid, cards){
+  grid.querySelectorAll(".stat-card").forEach((card, i) => {
+    const c = cards[i];
+    const valueEl = card.querySelector(".stat-value");
+    countUp(valueEl, parseFloat(c.value), { decimals:c.decimals, suffix:c.suffix, duration:1000 });
+    const pct = c.pct !== undefined ? c.pct : Math.min(100, parseFloat(c.value));
+    requestAnimationFrame(()=> setTimeout(()=>{ card.querySelector(".progress-fill").style.width = Math.max(4,pct) + "%"; }, 60));
+  });
+}
 
 /* ---------------------------------------------------------------------- */
-/* Dashboard                                                               */
+/* Dashboard dispatcher — role-based layouts                               */
 /* ---------------------------------------------------------------------- */
 function currentStudent(){
   const session = getSession();
   const id = session && session.studentId ? session.studentId : 1;
   return STUDENTS.find(s => s.id === id) || STUDENTS[0];
 }
-
 function renderDashboard(){
+  const role = currentRole();
+  document.querySelectorAll(".dash-role").forEach(el => el.classList.remove("active"));
+  const target = document.getElementById(`dash-role-${role === "guest" ? "student" : role}`);
+  if(target) target.classList.add("active");
+
+  if(role === "teacher") renderTeacherDashboard();
+  else if(role === "admin") renderAdminDashboard();
+  else renderStudentDashboard();
+}
+
+/* ---- Student dashboard ---- */
+function renderStudentDashboard(){
   const student = currentStudent();
   document.getElementById("dash-welcome-name").textContent = (getSession()?.name || student.name).split(" ")[0];
 
+  const trendDelta = student.trend[5]-student.trend[4];
   const cards = [
-    { label:"Overall GPA", value: student.gpa, decimals:2, trend: student.trend[5]-student.trend[4], suffix:"" },
-    { label:"Average Score", value: student.avg, decimals:0, trend: student.trend[5]-student.trend[4], suffix:"%" },
+    { label:"Overall GPA", value: student.gpa, decimals:2, trend: trendDelta, suffix:"", pct: parseFloat(student.gpa)/4*100 },
+    { label:"Average Score", value: student.avg, decimals:0, trend: trendDelta, suffix:"%" },
     { label:"Attendance", value: student.attendance, decimals:0, trend: student.attendance>=90?1:(student.attendance>=80?0:-1), suffix:"%" },
-    { label:"Class Rank", value: student.rank, decimals:0, trend:0, suffix:` / ${STUDENTS.length}` },
+    { label:"Class Rank", value: student.rank, decimals:0, trend:0, suffix:` / ${STUDENTS.length}`, pct: Math.max(6, 100 - (student.rank/STUDENTS.length*100)) },
   ];
-
   const grid = document.getElementById("dash-stat-grid");
-  grid.innerHTML = "";
-  cards.forEach(c => {
-    const trendClass = c.trend > 0 ? "trend-up" : c.trend < 0 ? "trend-down" : "trend-flat";
-    const trendLabel = c.trend > 0 ? "▲ improving" : c.trend < 0 ? "▼ needs focus" : "— steady";
-    const card = document.createElement("div");
-    card.className = "card stat-card";
-    card.innerHTML = `
-      <div class="stat-top">
-        <span class="badge-eyebrow">${c.label}</span>
-        <span class="stat-trend ${trendClass}">${trendLabel}</span>
-      </div>
-      <div class="stat-value mono" data-target="${c.value}" data-decimals="${c.decimals}" data-suffix="${c.suffix}">0</div>
-      <div class="progress-track"><div class="progress-fill"></div></div>
-    `;
-    grid.appendChild(card);
-    const valueEl = card.querySelector(".stat-value");
-    countUp(valueEl, parseFloat(c.value), { decimals:c.decimals, suffix:c.suffix, duration:1000 });
-    const pct = c.label === "Class Rank" ? Math.max(6, 100 - (student.rank/STUDENTS.length*100)) : Math.min(100, parseFloat(c.value));
-    requestAnimationFrame(()=> setTimeout(()=>{ card.querySelector(".progress-fill").style.width = pct + "%"; }, 60));
-  });
+  grid.innerHTML = cards.map(buildStatCard).join("");
+  animateStatGrid(grid, cards);
 
-  // grade stamp
-  document.getElementById("dash-grade-stamp").textContent = student.grade;
-  document.getElementById("dash-grade-stamp").className = `grade-stamp ${gradeClass(student.grade)}`;
+  const stamp = document.getElementById("dash-grade-stamp");
+  stamp.textContent = student.grade;
+  stamp.className = `grade-stamp ${gradeClass(student.grade)}`;
 
-  // subject breakdown mini list
   const subjWrap = document.getElementById("dash-subject-list");
   subjWrap.innerHTML = SUBJECTS.map(subj => `
     <div class="subject-row">
@@ -241,11 +467,10 @@ function renderDashboard(){
       <span class="score mono">${student.scores[subj]}</span>
     </div>
   `).join("");
-  setTimeout(()=>{
+  requestAnimationFrame(()=> setTimeout(()=>{
     subjWrap.querySelectorAll(".bar-fill").forEach(b => b.style.width = b.dataset.w + "%");
-  }, 80);
+  }, 80));
 
-  // upcoming / recent table (simple recent activity)
   const activityBody = document.getElementById("dash-activity-body");
   const activities = [
     { label:"Mid-term Mathematics test graded", when:"2 days ago", pill: pillClass(student.scores.Mathematics) },
@@ -257,7 +482,125 @@ function renderDashboard(){
     <tr>
       <td>${a.label}</td>
       <td><span class="pill ${a.pill}">Updated</span></td>
-      <td class="mono" style="color:#7A8B83">${a.when}</td>
+      <td class="mono" style="color:var(--text-muted-soft)">${a.when}</td>
+    </tr>
+  `).join("");
+}
+
+/* ---- Teacher dashboard ---- */
+let teacherSearchQuery = "";
+function myClasses(){
+  const session = getSession();
+  return (session && session.classes && session.classes.length) ? session.classes : [ALL_CLASSES[0]];
+}
+function myStudents(){
+  const classes = myClasses();
+  return STUDENTS.filter(s => classes.includes(s.className));
+}
+function renderTeacherDashboard(){
+  const session = getSession();
+  document.getElementById("teacher-welcome-name").textContent = (session?.name || "Teacher").split(" ")[0];
+  const classes = myClasses();
+  document.getElementById("teacher-classes-sub").textContent = `Teaching ${classes.join(" · ")}`;
+
+  const students = myStudents();
+  const avgOfClass = students.length ? Math.round(students.reduce((a,s)=>a+s.avg,0)/students.length) : 0;
+  const attOfClass = students.length ? Math.round(students.reduce((a,s)=>a+s.attendance,0)/students.length) : 0;
+  const atRisk = students.filter(s => s.avg < 55 || s.attendance < 80).length;
+
+  const cards = [
+    { label:"My classes", value: classes.length, decimals:0, trend:0, suffix:"", pct: Math.min(100, classes.length*25) },
+    { label:"Students taught", value: students.length, decimals:0, trend:0, suffix:"", pct: Math.min(100, students.length*8) },
+    { label:"Class average", value: avgOfClass, decimals:0, trend: avgOfClass>=70?1:-1, suffix:"%" },
+    { label:"Students at risk", value: atRisk, decimals:0, trend: atRisk>0?-1:1, suffix:"", pct: Math.min(100, atRisk*20) },
+  ];
+  const grid = document.getElementById("teacher-stat-grid");
+  grid.innerHTML = cards.map(buildStatCard).join("");
+  animateStatGrid(grid, cards);
+
+  drawTeacherTable();
+}
+function drawTeacherTable(){
+  const tbody = document.getElementById("teacher-table-body");
+  const q = teacherSearchQuery;
+  const rows = myStudents().filter(s => s.name.toLowerCase().includes(q) || s.className.toLowerCase().includes(q));
+
+  if(rows.length === 0){
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No students match your search.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(s => `
+    <tr data-id="${s.id}">
+      <td><div class="name-cell"><span class="mini-avatar">${initialsOf(s.name)}</span>${s.name}</div></td>
+      <td>${s.className}</td>
+      <td class="mono">${s.gpa}</td>
+      <td><span class="pill ${pillClass(s.avg)}">${s.avg}% · ${s.grade}</span></td>
+      <td class="mono">${s.attendance}%</td>
+    </tr>
+  `).join("");
+}
+
+/* ---- Admin dashboard ---- */
+function renderAdminDashboard(){
+  const session = getSession();
+  document.getElementById("admin-welcome-name").textContent = (session?.name || "Admin").split(" ")[0];
+
+  const users = getUsers();
+  const teacherCount = users.filter(u => u.role === "teacher").length;
+  const schoolAvg = Math.round(STUDENTS.reduce((a,s)=>a+s.avg,0)/STUDENTS.length);
+
+  const cards = [
+    { label:"Total students", value: STUDENTS.length, decimals:0, trend:0, suffix:"", pct: Math.min(100, STUDENTS.length*6) },
+    { label:"Total teachers", value: teacherCount, decimals:0, trend:0, suffix:"", pct: Math.min(100, teacherCount*20) },
+    { label:"Classes", value: ALL_CLASSES.length, decimals:0, trend:0, suffix:"", pct: Math.min(100, ALL_CLASSES.length*20) },
+    { label:"School-wide average", value: schoolAvg, decimals:0, trend: schoolAvg>=70?1:-1, suffix:"%" },
+  ];
+  const grid = document.getElementById("admin-stat-grid");
+  grid.innerHTML = cards.map(buildStatCard).join("");
+  animateStatGrid(grid, cards);
+
+  // average per class
+  const classList = document.getElementById("admin-class-list");
+  classList.innerHTML = ALL_CLASSES.map(cls => {
+    const rows = STUDENTS.filter(s => s.className === cls);
+    const avg = Math.round(rows.reduce((a,s)=>a+s.avg,0)/rows.length);
+    return `
+      <div class="subject-row">
+        <span class="subj-name">${cls}</span>
+        <div class="bar-track"><div class="bar-fill" data-w="${avg}"></div></div>
+        <span class="score mono">${avg}</span>
+      </div>`;
+  }).join("");
+  requestAnimationFrame(()=> setTimeout(()=>{
+    classList.querySelectorAll(".bar-fill").forEach(b => b.style.width = b.dataset.w + "%");
+  }, 80));
+
+  // top performers
+  const topBody = document.getElementById("admin-top-body");
+  topBody.innerHTML = STUDENTS.slice(0,5).map(s => `
+    <tr data-id="${s.id}" style="cursor:pointer;">
+      <td><div class="name-cell"><span class="mini-avatar">${initialsOf(s.name)}</span>${s.name}</div></td>
+      <td>${s.className}</td>
+      <td><span class="pill ${pillClass(s.avg)}">${s.avg}%</span></td>
+    </tr>
+  `).join("");
+
+  // manage accounts
+  drawUserManagementTable();
+}
+function drawUserManagementTable(){
+  const tbody = document.getElementById("admin-users-body");
+  const users = getUsers();
+  if(users.length === 0){
+    tbody.innerHTML = `<tr><td colspan="4" class="empty-state">No registered accounts yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = users.map(u => `
+    <tr data-email="${u.email}">
+      <td>${u.name}</td>
+      <td>${u.email}</td>
+      <td><span class="role-badge role-${u.role}">${u.role}</span></td>
+      <td class="row-actions"><button type="button" class="admin-delete-user" ${u.email === (getSession()?.email) ? "disabled title='Cannot remove your own account'" : ""}>Remove</button></td>
     </tr>
   `).join("");
 }
@@ -266,15 +609,20 @@ function renderDashboard(){
 /* Report / search / filter / sort                                        */
 /* ---------------------------------------------------------------------- */
 let reportState = { query: "", classFilter: "all", sortKey: "rank", sortDir: "asc" };
+let reportInitialized = false;
+
+function visibleStudentsForReport(){
+  // Teachers only see their own classes in the report view; students & admins see everyone.
+  if(currentRole() === "teacher") return STUDENTS.filter(s => myClasses().includes(s.className));
+  return STUDENTS;
+}
 
 function renderReport(){
   const searchInput = document.getElementById("report-search");
   const classSelect = document.getElementById("report-class-filter");
 
-  // populate class filter once
   if(classSelect.options.length <= 1){
-    const classes = [...new Set(STUDENTS.map(s => s.className))].sort();
-    classes.forEach(c => {
+    ALL_CLASSES.forEach(c => {
       const opt = document.createElement("option");
       opt.value = c; opt.textContent = c;
       classSelect.appendChild(opt);
@@ -283,34 +631,42 @@ function renderReport(){
 
   searchInput.value = reportState.query;
   classSelect.value = reportState.classFilter;
-
   drawReportTable();
 
-  searchInput.oninput = (e) => { reportState.query = e.target.value.toLowerCase(); drawReportTable(); };
-  classSelect.onchange = (e) => { reportState.classFilter = e.target.value; drawReportTable(); };
-
-  document.querySelectorAll("#report-table thead th[data-key]").forEach(th => {
-    th.onclick = () => {
-      const key = th.dataset.key;
-      if(reportState.sortKey === key){
-        reportState.sortDir = reportState.sortDir === "asc" ? "desc" : "asc";
-      } else {
-        reportState.sortKey = key;
-        reportState.sortDir = "asc";
-      }
+  if(!reportInitialized){
+    reportInitialized = true;
+    searchInput.addEventListener("input", debounce((e) => {
+      reportState.query = e.target.value.toLowerCase();
       drawReportTable();
-    };
-  });
+    }, 150));
+    classSelect.addEventListener("change", (e) => {
+      reportState.classFilter = e.target.value;
+      drawReportTable();
+    });
+    document.querySelector("#report-table thead").addEventListener("click", (e) => {
+      const th = e.target.closest("th[data-key]");
+      if(!th) return;
+      const key = th.dataset.key;
+      if(reportState.sortKey === key) reportState.sortDir = reportState.sortDir === "asc" ? "desc" : "asc";
+      else { reportState.sortKey = key; reportState.sortDir = "asc"; }
+      drawReportTable();
+    });
+    // delegated row click -> open profile (performance: one listener, not one per row)
+    document.getElementById("report-table-body").addEventListener("click", (e) => {
+      const tr = e.target.closest("tr[data-id]");
+      if(tr) navigate("profile", tr.dataset.id);
+    });
+  }
 }
 
 function drawReportTable(){
-  let rows = STUDENTS.filter(s => {
+  let rows = visibleStudentsForReport().filter(s => {
     const matchesQuery = s.name.toLowerCase().includes(reportState.query) || s.className.toLowerCase().includes(reportState.query);
     const matchesClass = reportState.classFilter === "all" || s.className === reportState.classFilter;
     return matchesQuery && matchesClass;
   });
 
-  rows.sort((a,b) => {
+  rows = rows.slice().sort((a,b) => {
     let av = a[reportState.sortKey], bv = b[reportState.sortKey];
     if(typeof av === "string") { av = av.toLowerCase(); bv = bv.toLowerCase(); }
     if(av < bv) return reportState.sortDir === "asc" ? -1 : 1;
@@ -337,24 +693,15 @@ function drawReportTable(){
   document.getElementById("report-count").textContent = `${rows.length} student${rows.length===1?"":"s"}`;
 
   tbody.innerHTML = rows.map(s => `
-    <tr data-id="${s.id}">
+    <tr data-id="${s.id}" tabindex="0">
       <td class="mono">#${s.rank}</td>
-      <td>
-        <div class="name-cell">
-          <span class="mini-avatar">${initialsOf(s.name)}</span>
-          ${s.name}
-        </div>
-      </td>
+      <td><div class="name-cell"><span class="mini-avatar">${initialsOf(s.name)}</span>${s.name}</div></td>
       <td>${s.className}</td>
       <td class="mono">${s.gpa}</td>
       <td><span class="pill ${pillClass(s.avg)}">${s.avg}% · ${s.grade}</span></td>
       <td class="mono">${s.attendance}%</td>
     </tr>
   `).join("");
-
-  tbody.querySelectorAll("tr").forEach(tr => {
-    tr.addEventListener("click", () => navigate("profile", tr.dataset.id));
-  });
 }
 
 /* ---------------------------------------------------------------------- */
@@ -377,9 +724,8 @@ function renderProfile(idParam){
       <span class="score mono">${student.scores[subj]}</span>
     </div>
   `).join("");
-  setTimeout(()=> subjWrap.querySelectorAll(".bar-fill").forEach(b => b.style.width = b.dataset.w + "%"), 80);
+  requestAnimationFrame(()=> setTimeout(()=> subjWrap.querySelectorAll(".bar-fill").forEach(b => b.style.width = b.dataset.w + "%"), 80));
 
-  // attendance ring
   const ring = document.getElementById("profile-ring-fg");
   const circumference = 2 * Math.PI * 52;
   ring.style.strokeDasharray = `${circumference}`;
@@ -391,7 +737,6 @@ function renderProfile(idParam){
   }, 100);
   document.getElementById("profile-ring-value").textContent = student.attendance + "%";
 
-  // trend sparkline (inline SVG)
   const spark = document.getElementById("profile-sparkline");
   const w = 240, h = 60, max = 100, min = 40;
   const pts = student.trend.map((v,i) => {
@@ -408,8 +753,9 @@ function renderProfile(idParam){
     }).join("")}
   `;
 
-  document.getElementById("profile-grade-stamp").textContent = student.grade;
-  document.getElementById("profile-grade-stamp").className = `grade-stamp ${gradeClass(student.grade)}`;
+  const stamp = document.getElementById("profile-grade-stamp");
+  stamp.textContent = student.grade;
+  stamp.className = `grade-stamp ${gradeClass(student.grade)}`;
   document.getElementById("profile-back-btn").onclick = () => navigate("report");
 }
 
@@ -423,22 +769,18 @@ function setFieldError(fieldEl, message){
   const msg = fieldEl.querySelector(".error-msg");
   if(msg) msg.textContent = message;
 }
-function clearFieldError(fieldEl){
-  fieldEl.classList.remove("error");
-}
+function clearFieldError(fieldEl){ fieldEl.classList.remove("error"); }
 function validateField(fieldEl, condition, message){
   if(condition){ clearFieldError(fieldEl); return true; }
   setFieldError(fieldEl, message);
   return false;
 }
-
 function togglePasswordVisibility(btn){
   const input = btn.closest(".input-row").querySelector("input");
   const isPass = input.type === "password";
   input.type = isPass ? "text" : "password";
   btn.textContent = isPass ? "Hide" : "Show";
 }
-
 function passwordStrength(pw){
   let score = 0;
   if(pw.length >= 6) score++;
@@ -458,7 +800,6 @@ function renderStrength(meterEl, pw){
 /* Auth forms                                                              */
 /* ---------------------------------------------------------------------- */
 function initAuthForms(){
-  // LOGIN
   const loginForm = document.getElementById("login-form");
   loginForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -471,23 +812,16 @@ function initAuthForms(){
     const passOk = validateField(passField, password.length >= 6, "Password must be at least 6 characters.");
     if(!emailOk || !passOk) return;
 
-    const users = getUsers();
-    const user = users.find(u => u.email === email);
-    if(!user){
-      setFieldError(emailField, "No account found with this email.");
-      return;
-    }
-    if(user.password !== password){
-      setFieldError(passField, "Incorrect password. Try again.");
-      return;
-    }
+    const user = getUsers().find(u => u.email === email);
+    if(!user){ setFieldError(emailField, "No account found with this email."); return; }
+    if(user.password !== password){ setFieldError(passField, "Incorrect password. Try again."); return; }
+
     setSession(user);
     showToast(`Welcome back, ${user.name.split(" ")[0]}!`, "success");
     loginForm.reset();
     navigate("dashboard");
   });
 
-  // REGISTER
   const registerForm = document.getElementById("register-form");
   const regPassInput = document.getElementById("register-password");
   regPassInput.addEventListener("input", () => renderStrength(document.getElementById("register-strength"), regPassInput.value));
@@ -501,6 +835,7 @@ function initAuthForms(){
 
     const name = document.getElementById("register-name").value.trim();
     const email = document.getElementById("register-email").value.trim();
+    const role = document.getElementById("register-role").value;
     const password = document.getElementById("register-password").value;
     const confirm = document.getElementById("register-confirm").value;
 
@@ -511,11 +846,13 @@ function initAuthForms(){
     if(!nameOk || !emailOk || !passOk || !confirmOk) return;
 
     const users = getUsers();
-    if(users.find(u => u.email === email)){
-      setFieldError(emailField, "An account with this email already exists.");
-      return;
-    }
-    const newUser = { name, email, password, studentId: 1 };
+    if(users.find(u => u.email === email)){ setFieldError(emailField, "An account with this email already exists."); return; }
+
+    const newUser = {
+      name, email, password, role,
+      studentId: role === "student" ? 1 : null,
+      classes: role === "teacher" ? [ALL_CLASSES[0]] : [],
+    };
     users.push(newUser);
     saveUsers(users);
     setSession(newUser);
@@ -524,7 +861,6 @@ function initAuthForms(){
     navigate("dashboard");
   });
 
-  // FORGOT PASSWORD
   const forgotForm = document.getElementById("forgot-form");
   forgotForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -533,19 +869,15 @@ function initAuthForms(){
     const emailOk = validateField(emailField, EMAIL_RE.test(email), "Enter a valid email address.");
     if(!emailOk) return;
 
-    const users = getUsers();
-    const user = users.find(u => u.email === email);
-    if(!user){
-      setFieldError(emailField, "No account found with this email.");
-      return;
-    }
+    const user = getUsers().find(u => u.email === email);
+    if(!user){ setFieldError(emailField, "No account found with this email."); return; }
+
     localStorage.setItem(STORE_RESET, email);
     showToast("Reset instructions sent (simulated) — continue below.", "success");
     forgotForm.reset();
     setTimeout(()=> navigate("reset"), 500);
   });
 
-  // RESET PASSWORD
   const resetForm = document.getElementById("reset-form");
   const resetPassInput = document.getElementById("reset-password");
   resetPassInput.addEventListener("input", () => renderStrength(document.getElementById("reset-strength"), resetPassInput.value));
@@ -564,11 +896,8 @@ function initAuthForms(){
     const email = localStorage.getItem(STORE_RESET);
     const users = getUsers();
     const user = users.find(u => u.email === email);
-    if(!user){
-      showToast("Reset session expired. Please request a new link.", "error");
-      navigate("forgot");
-      return;
-    }
+    if(!user){ showToast("Reset session expired. Please request a new link.", "error"); navigate("forgot"); return; }
+
     user.password = password;
     saveUsers(users);
     localStorage.removeItem(STORE_RESET);
@@ -577,21 +906,142 @@ function initAuthForms(){
     navigate("login");
   });
 
-  // LOGOUT
-  document.getElementById("logout-btn").addEventListener("click", () => {
+  dom.logoutBtn.addEventListener("click", () => {
     clearSession();
     showToast("You've been logged out.", "info");
     navigate("home");
   });
 
-  // show/hide password toggles
   document.querySelectorAll(".toggle-pass").forEach(btn => {
     btn.addEventListener("click", () => togglePasswordVisibility(btn));
   });
 
-  // live-clear errors while typing
-  document.querySelectorAll(".field input, .field textarea").forEach(input => {
-    input.addEventListener("input", () => clearFieldError(input.closest(".field")));
+  // delegated: clear a field's error state as soon as the person edits it
+  document.body.addEventListener("input", (e) => {
+    const field = e.target.closest(".field");
+    if(field && (e.target.matches("input, textarea, select"))) clearFieldError(field);
+  });
+}
+
+/* ---------------------------------------------------------------------- */
+/* Account / profile management page                                       */
+/* ---------------------------------------------------------------------- */
+const PREF_KEYS = { grade:"pref-grade-notifs", attendance:"pref-attendance-notifs", news:"pref-news-notifs" };
+function getPrefs(email){
+  try { return (JSON.parse(localStorage.getItem("spap_prefs")) || {})[email] || { grade:true, attendance:true, news:false }; }
+  catch(e){ return { grade:true, attendance:true, news:false }; }
+}
+function setPrefs(email, prefs){
+  let store = {};
+  try { store = JSON.parse(localStorage.getItem("spap_prefs")) || {}; } catch(e){ store = {}; }
+  store[email] = prefs;
+  localStorage.setItem("spap_prefs", JSON.stringify(store));
+}
+
+function renderAccountSettings(){
+  const session = getSession();
+  if(!session) return;
+  const user = getUsers().find(u => u.email === session.email);
+  if(!user) return;
+
+  document.getElementById("account-avatar-initials").textContent = initialsOf(user.name);
+  document.getElementById("account-side-name").textContent = user.name;
+  const roleBadge = document.getElementById("account-side-role");
+  roleBadge.textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+  roleBadge.className = `role-badge role-${user.role}`;
+
+  document.getElementById("account-name").value = user.name;
+  document.getElementById("account-email").value = user.email;
+  document.getElementById("account-role").value = roleBadge.textContent;
+
+  const prefs = getPrefs(user.email);
+  document.getElementById("pref-grade-notifs").checked = prefs.grade;
+  document.getElementById("pref-attendance-notifs").checked = prefs.attendance;
+  document.getElementById("pref-news-notifs").checked = prefs.news;
+
+  const savedTheme = localStorage.getItem(STORE_THEME);
+  document.querySelectorAll('input[name="theme-pref"]').forEach(r => {
+    r.checked = savedTheme ? r.value === savedTheme : r.value === "system";
+  });
+}
+
+function initAccountPage(){
+  // tab switching
+  document.querySelectorAll(".settings-tabgroup button").forEach(tabBtn => {
+    tabBtn.addEventListener("click", () => {
+      document.querySelectorAll(".settings-tabgroup button").forEach(b => { b.classList.remove("active"); b.setAttribute("aria-selected","false"); });
+      tabBtn.classList.add("active");
+      tabBtn.setAttribute("aria-selected","true");
+      document.querySelectorAll(".settings-section").forEach(s => s.classList.remove("active"));
+      document.getElementById(`settings-${tabBtn.dataset.tab}`).classList.add("active");
+    });
+  });
+
+  document.getElementById("account-profile-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const nameField = document.getElementById("account-name-field");
+    const emailField = document.getElementById("account-email-field");
+    const name = document.getElementById("account-name").value.trim();
+    const email = document.getElementById("account-email").value.trim();
+
+    const nameOk = validateField(nameField, name.length >= 2, "Enter your full name.");
+    const emailOk = validateField(emailField, EMAIL_RE.test(email), "Enter a valid email address.");
+    if(!nameOk || !emailOk) return;
+
+    const session = getSession();
+    const users = getUsers();
+    const user = users.find(u => u.email === session.email);
+    if(email !== session.email && users.find(u => u.email === email)){
+      setFieldError(emailField, "That email is already in use.");
+      return;
+    }
+    user.name = name; user.email = email;
+    saveUsers(users);
+    setSession(user);
+    showToast("Profile updated.", "success");
+    updateAuthUI();
+    renderAccountSettings();
+  });
+
+  const newPassInput = document.getElementById("account-new-password");
+  newPassInput.addEventListener("input", () => renderStrength(document.getElementById("account-new-strength"), newPassInput.value));
+
+  document.getElementById("account-security-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const curField = document.getElementById("account-current-field");
+    const newField = document.getElementById("account-new-field");
+    const confirmField = document.getElementById("account-confirm-field");
+    const current = document.getElementById("account-current-password").value;
+    const next = document.getElementById("account-new-password").value;
+    const confirm = document.getElementById("account-confirm-password").value;
+
+    const session = getSession();
+    const users = getUsers();
+    const user = users.find(u => u.email === session.email);
+
+    const curOk = validateField(curField, user.password === current, "Current password is incorrect.");
+    const newOk = validateField(newField, next.length >= 6, "Password must be at least 6 characters.");
+    const confirmOk = validateField(confirmField, next === confirm && confirm.length > 0, "Passwords do not match.");
+    if(!curOk || !newOk || !confirmOk) return;
+
+    user.password = next;
+    saveUsers(users);
+    showToast("Password updated.", "success");
+    e.target.reset();
+    document.getElementById("account-new-strength").querySelectorAll("span").forEach(s => s.style.background = "var(--paper-line)");
+  });
+
+  ["pref-grade-notifs","pref-attendance-notifs","pref-news-notifs"].forEach(id => {
+    document.getElementById(id).addEventListener("change", () => {
+      const session = getSession();
+      if(!session) return;
+      setPrefs(session.email, {
+        grade: document.getElementById("pref-grade-notifs").checked,
+        attendance: document.getElementById("pref-attendance-notifs").checked,
+        news: document.getElementById("pref-news-notifs").checked,
+      });
+      showToast("Preferences saved.", "info");
+    });
   });
 }
 
@@ -621,12 +1071,50 @@ function initContactForm(){
 }
 
 /* ---------------------------------------------------------------------- */
+/* Delegated listeners for dynamically-built tables (performance:          */
+/* one listener per container instead of one per row/button)               */
+/* ---------------------------------------------------------------------- */
+function initDelegatedTableHandlers(){
+  document.getElementById("teacher-search").addEventListener("input", debounce((e) => {
+    teacherSearchQuery = e.target.value.toLowerCase();
+    drawTeacherTable();
+  }, 150));
+
+  document.getElementById("teacher-table-body").addEventListener("click", (e) => {
+    const tr = e.target.closest("tr[data-id]");
+    if(tr) navigate("profile", tr.dataset.id);
+  });
+
+  document.getElementById("admin-top-body").addEventListener("click", (e) => {
+    const tr = e.target.closest("tr[data-id]");
+    if(tr) navigate("profile", tr.dataset.id);
+  });
+
+  document.getElementById("admin-users-body").addEventListener("click", (e) => {
+    const btn = e.target.closest(".admin-delete-user");
+    if(!btn || btn.disabled) return;
+    const tr = btn.closest("tr");
+    const email = tr.dataset.email;
+    const users = getUsers().filter(u => u.email !== email);
+    saveUsers(users);
+    showToast("Account removed.", "info");
+    drawUserManagementTable();
+  });
+}
+
+/* ---------------------------------------------------------------------- */
 /* Init                                                                    */
 /* ---------------------------------------------------------------------- */
 document.addEventListener("DOMContentLoaded", () => {
+  cacheDom();
+  initThemeControls();
+  initPopovers();
+  initMobileNav();
   initAuthForms();
   initContactForm();
-  document.getElementById("year").textContent = new Date().getFullYear();
+  initAccountPage();
+  initDelegatedTableHandlers();
+  dom.year.textContent = new Date().getFullYear();
   if(!location.hash) location.hash = "#/home";
   renderRoute();
 });
